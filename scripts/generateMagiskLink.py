@@ -64,6 +64,12 @@ if magisk_branch == "vvb2060":
         download_files[f"magisk-{magisk_ver}.zip"] = magisk_link
     except Exception:
         print("Failed to fetch from AppCenter API...")
+elif magisk_branch == "HuskyDG":
+    try:
+        magisk_link = "https://github.com/1q23lyc45/KitsuneMagisk/releases/download/v27.2-kitsune-4/app-release.apk"
+        download_files[f"magisk-{magisk_ver}.zip"] = magisk_link
+    except Exception:
+        print("Failed to fetch from GitHub")
 else:
     try:
         magisk_link = json.loads(requests.get(
