@@ -195,6 +195,11 @@ jobs:
           else
               ./scripts/build_with_mount.sh ${{ env.body }}
           fi
+      - name: Install Houdini and Process Images
+        run: |      
+          chmod +x ./libhoudini/houdini_installer.sh
+          ./libhoudini/houdini_installer.sh "${{ steps.wsa.outputs.artifact }}"
+        shell: bash
       - name: Pass to Windows
         if: env.iscustom == 'true' && success()
         uses: actions/cache/save@v4
