@@ -102,6 +102,7 @@ ARGUMENT_LIST=(
     "magisk-ver:"
     "install-gapps"
     "remove-amazon"
+    "debloat"
 )
 
 default
@@ -147,6 +148,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --remove-amazon)
             REMOVE_AMAZON=1
+            shift
+            ;;
+        --debloat)
+            DEBLOAT=1
             shift
             ;;
         --)
@@ -351,6 +356,23 @@ if [ "$HAS_GAPPS" ] || [ "$ROOT_SOL" = "magisk" ]; then
         unset SKIPINITLD
     fi
     "$WORK_DIR/magisk/magiskboot" compress=xz "$MAGISK_PATH" "$WORK_DIR/magisk/stub.xz"
+    
+    if [ "$DEBLOAT" ]; then
+        echo "Preparing debloat list..."
+        PACKAGES=(
+            "CtsShimPrebuilt" "Bluetooth" "SettingsIntelligence" "AdServices" "BackupRestoreConfirmation" 
+            "Contacts" "ModuleMetadata" "Music" "NearbySharing" "PrintSpooler" "WallpaperBackup" 
+            "SharedStorageBackup" "ContactsProvider" "HtmlViewer" "CalendarProvider" "SoundPicker" 
+            "CompanionDeviceManager" "DynSystem" "StatementService" "PrintRecommendationService" 
+            "Camera2" "BluetoothMidiService" "Talkback" "Hotspot2" "SafetyCenterResources" "SeService"
+            "NetworkStack" "PartnerBookmarksProvider" "Stk" "Tag" "BasicDreams" "VpnDialogs"
+        )
+        printf "%s\n" "${PACKAGES[@]}" > "$WORK_DIR/debloat_list"
+        DEBLOAT_CMD="add 0644 overlay.d/sbin/debloat_list $WORK_DIR/debloat_list"
+    else
+        DEBLOAT_CMD="exists /dev/null"
+    fi
+
     "$WORK_DIR/magisk/magiskboot" cpio "$WORK_DIR/wsa/$ARCH/Tools/initrd.img" \
         "mv /init /wsainit" \
         "add 0750 /lspinit ../bin/$ARCH/lspinit" \
@@ -368,6 +390,13 @@ if [ "$HAS_GAPPS" ] || [ "$ROOT_SOL" = "magisk" ]; then
         "add 000 overlay.d/sbin/post-fs-data.sh post-fs-data.sh" \
         "add 000 overlay.d/sbin/lsp_cust.img $CUST_PATH" \
         || abort "Unable to patch initrd"
+
+    if [ "$DEBLOAT" ]; then
+        echo "Adding debloat list to initrd..."
+        "$WORK_DIR/magisk/magiskboot" cpio "$WORK_DIR/wsa/$ARCH/Tools/initrd.img" \
+            "add 0644 overlay.d/sbin/debloat_list $WORK_DIR/debloat_list" \
+            || abort "Unable to add debloat list to initrd"
+    fi
 elif [ "$ROOT_SOL" = "kernelsu" ]; then
     echo "Extracting KernelSU"
     # shellcheck disable=SC1090
@@ -437,7 +466,7 @@ else
     fi
 fi
 cp "../installer/$ARCH/Install.ps1" "$WORK_DIR/wsa/$ARCH" || abort
-find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/pri*" -not -path "*/xml*" -not -path "*/apex*" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
+find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/pri*" -not -path "*/xml*" -not -path "*/apex*" -not -name "MakePri.ps1" -not -name "filelist.txt" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/pri" -printf "%P\n" | sed -e 's/^/pri\\/' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/xml" -printf "%P\n" | sed -e 's/^/xml\\/' -e '/^$/d' >> "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
 cp "../installer/$ARCH/MakePri.ps1" "$WORK_DIR/wsa/$ARCH" || abort

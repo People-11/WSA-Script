@@ -96,7 +96,7 @@ jobs:
                   else:
                       iscustom = 'false'
                       errinfo = 'Argument is invaild, please update the body of the Issues'
-                  if re.match(".*arch.*64.*release-type.*root-sol\smagisk.*magisk-branch.*magisk-ver.*compress-format.*", body):
+                  if re.match(r".*arch.*64.*release-type.*root-sol\smagisk.*magisk-branch.*magisk-ver.*compress-format.*", body):
                       ismagisk = 'true'
               except Exception as e:
                   iscustom = 'false'

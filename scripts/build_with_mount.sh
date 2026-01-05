@@ -195,6 +195,7 @@ ARGUMENT_LIST=(
     "compress-format:"
     "install-gapps"
     "remove-amazon"
+    "debloat"
 )
 
 default
@@ -217,6 +218,7 @@ while [[ $# -gt 0 ]]; do
         --compress-format   ) COMPRESS_FORMAT="$2"; shift 2 ;;
         --install-gapps     ) HAS_GAPPS="yes"; shift ;;
         --remove-amazon     ) REMOVE_AMAZON="yes"; shift ;;
+        --debloat           ) DEBLOAT="yes"; shift ;;
         --magisk-branch     ) MAGISK_BRANCH="$2"; shift 2 ;;
         --magisk-ver        ) MAGISK_VER="$2"; shift 2 ;;
         --                  ) shift; break;;
@@ -516,6 +518,22 @@ if [ "$REMOVE_AMAZON" ]; then
     echo -e "done\n"
 fi
 
+if [ "$DEBLOAT" ]; then
+    echo "Debloating system..."
+    PACKAGES=(
+        "CtsShimPrebuilt" "Bluetooth" "SettingsIntelligence" "AdServices" "BackupRestoreConfirmation" 
+        "Contacts" "ModuleMetadata" "Music" "NearbySharing" "PrintSpooler" "WallpaperBackup" 
+        "SharedStorageBackup" "ContactsProvider" "HtmlViewer" "CalendarProvider" "SoundPicker" 
+        "CompanionDeviceManager" "DynSystem" "StatementService" "PrintRecommendationService" 
+        "Camera2" "BluetoothMidiService" "Talkback" "Hotspot2" "SafetyCenterResources" "SeService"
+        "NetworkStack" "PartnerBookmarksProvider" "Stk" "Tag" "BasicDreams" "VpnDialogs"
+    )
+    for pkg in "${PACKAGES[@]}"; do
+        sudo find "$ROOT_MNT" "$VENDOR_MNT" "$PRODUCT_MNT" "$SYSTEM_EXT_MNT" -type d -name "*$pkg*" -exec rm -rfv {} + 2>/dev/null
+    done
+    echo -e "Debloat done\n"
+fi
+
 echo "Add device administration features"
 sudo sed -i -e '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
 sudo setfattr -n security.selinux -v "u:object_r:vendor_configs_file:s0" "$VENDOR_MNT/etc/permissions/windows.permissions.xml" || abort
@@ -735,7 +753,7 @@ else
     fi
 fi
 cp "../installer/$ARCH/Install.ps1" "$WORK_DIR/wsa/$ARCH" || abort
-find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/pri*" -not -path "*/xml*" -not -path "*/apex*" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
+find "$WORK_DIR/wsa/$ARCH" -not -path "*/uwp*" -not -path "*/pri*" -not -path "*/xml*" -not -path "*/apex*" -not -name "MakePri.ps1" -not -name "filelist.txt" -printf "%P\n" | sed -e 's@/@\\@g' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/pri" -printf "%P\n" | sed -e 's/^/pri\\/' -e '/^$/d' > "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
 find "$WORK_DIR/wsa/$ARCH/xml" -printf "%P\n" | sed -e 's/^/xml\\/' -e '/^$/d' >> "$WORK_DIR/wsa/$ARCH/filelist-pri.txt" || abort
 cp "../installer/$ARCH/MakePri.ps1" "$WORK_DIR/wsa/$ARCH" || abort

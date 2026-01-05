@@ -1,44 +1,28 @@
-#!/bin/sh
-MAGISKTMP=/sbin
-[ -d /sbin ] || MAGISKTMP=/debug_ramdisk
-MAGISKBIN=/data/adb/magisk
-if [ ! -d /data/adb ]; then
-    mkdir -m 700 /data/adb
-    chcon u:object_r:adb_data_file:s0 /data/adb
-fi
-if [ ! -d $MAGISKBIN ]; then
-    # shellcheck disable=SC2174
-    mkdir -p -m 755 $MAGISKBIN
-    chcon u:object_r:system_file:s0 $MAGISKBIN
-fi
-ABI=$(getprop ro.product.cpu.abi)
-for file in busybox magiskpolicy magiskboot magiskinit; do
-    [ -x "$MAGISKBIN/$file" ] || {
-        unzip -d $MAGISKBIN -oj $MAGISKTMP/stub.apk "lib/$ABI/lib$file.so"
-        mv $MAGISKBIN/lib$file.so $MAGISKBIN/$file
-        chmod 755 "$MAGISKBIN/$file"
-    }
-done
-for file in util_functions.sh boot_patch.sh; do
-    [ -x "$MAGISKBIN/$file" ] || {
-        unzip -d $MAGISKBIN -oj $MAGISKTMP/stub.apk "assets/$file"
-        chmod 755 "$MAGISKBIN/$file"
-    }
-done
-for file in "$MAGISKTMP"/*; do
-    if echo "$file" | grep -Eq "lsp_.+\.img"; then
-        foldername=$(basename "$file" .img)
-        mkdir -p "$MAGISKTMP/$foldername"
-        mount -t auto -o ro,loop "$file" "$MAGISKTMP/$foldername"
-        "$MAGISKTMP/$foldername/post-fs-data.sh" &
+#!/system/bin/sh
+# This script will be executed in post-fs-data mode
+MODDIR=${0%/*}
+
+# Debloat function: mount empty tmpfs over target directories
+debloat_app() {
+    local target="$1"
+    if [ -d "$target" ]; then
+        mount -t tmpfs tmpfs "$target"
     fi
-done
-wait
-for file in "$MAGISKTMP"/*; do
-    if echo "$file" | grep -Eq "lsp_.+\.img"; then
-        foldername=$(basename "$file" .img)
-        umount "$MAGISKTMP/$foldername"
-        rm -rf "${MAGISKTMP:?}/${foldername:?}"
-        rm -f "$file"
-    fi
-done
+}
+
+if [ -f "/sbin/debloat_list" ]; then
+    for pkg in $(cat /sbin/debloat_list); do
+        # Search in common app locations
+        for base in /system/app /system/priv-app /product/app /product/priv-app /system_ext/app /system_ext/priv-app /vendor/app; do
+            for dir in $(find $base -maxdepth 1 -name "*$pkg*" 2>/dev/null); do
+                debloat_app "$dir"
+            done
+        done
+    done
+fi
+
+# MagiskOnWSA custom logic
+if [ -f "$MODDIR/lsp_cust.img" ]; then
+    /magiskinit/magiskboot cpio /initrd.img "extract overlay.d/sbin/lsp_cust.img $MODDIR/lsp_cust.img"
+    # ... additional custom logic if needed
+fi
