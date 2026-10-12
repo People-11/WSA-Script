@@ -143,9 +143,6 @@
 1. Go to the [Releases page](https://github.com/YT-Advanced/WSA-Script/releases/latest)
 2. In the latest release, go to the Assets section and download the Windows Subsystem For Android™ version of your choosing (do not download "Source code")
 
-> **Note** : 
-> If you want to download WSA with Magisk Delta, please go to [![Action Tab](https://github.com/YT-Advanced/WSA-Script/actions/workflows/custom_build.yml/badge.svg)](https://github.com/YT-Advanced/WSA-Script/actions/workflows/custom_build.yml) and download the package from the Action. 
-
 3. Check integrity of downloaded file by [Follow this guide](Guides/Checksum.md)
 4. Extract the zip file
 5. Delete the zip file
@@ -272,10 +269,6 @@ Start-Process "wsa://com.topjohnwu.magisk"
 Magisk Alpha:
 ```pwsh
 Start-Process "wsa://io.github.vvb2060.magisk"
-```
-Magisk Delta:
-```pwsh
-Start-Process "wsa://io.github.huskydg.magisk"
 ```
 Google Play Store:
 ```pwsh

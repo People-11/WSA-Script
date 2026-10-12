@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ♻️
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Python 🏭
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           check-latest: true
           python-version: '3.13'
@@ -31,13 +31,10 @@ jobs:
         run: |
           sudo apt-get update
           PYTHON_VENV_DIR="$(dirname "$PWD")/python3-env"
-          python3 -m venv "$PYTHON_VENV_DIR" || abort "Failed to create python3 virtual env"
+          python3 -m venv "$PYTHON_VENV_DIR"
           # shellcheck disable=SC1091
-          source "$PYTHON_VENV_DIR/bin/activate" || abort "Failed to activate python3 virtual env"
-          python3 -c "import pkg_resources; pkg_resources.require(open('requirements.txt',mode='r'))" &>/dev/null || {
-              echo "Installing Python3 dependencies"
-              python3 -m pip install --upgrade -r requirements.txt || abort "Failed to install python3 dependencies"
-          }
+          source "$PYTHON_VENV_DIR/bin/activate"
+          python3 -m pip install --upgrade -r requirements.txt
           deactivate
 
       - name: Install Ubuntu Dependencies 🧑‍🏭
@@ -69,8 +66,12 @@ jobs:
               ./scripts/build_with_mount.sh --arch ${{ inputs.arch }} --release-type $RLS_TYPE --magisk-branch topjohnwu --magisk-ver stable $WITH_GAPPS --root-sol ${{ inputs.root }} --remove-amazon --compress-format 7z
           fi
 
+      - name: Install Houdini 🪄
+        if: inputs.arch == 'x64'
+        run: bash ./libhoudini/houdini_installer.sh "${{ steps.wsa.outputs.artifact }}"
+
       - name: Pass to Windows 💸
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.wsa.outputs.artifact }}-${{ steps.wsa.outputs.built }}
           path: output
@@ -94,26 +95,29 @@ jobs:
     runs-on: windows-latest
     needs: build
     steps:
-      - name: Checkout ♻️
-        uses: actions/checkout@v5
-
       - name: Download built artifact ⌛
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: output
           name: ${{ needs.build.outputs.zipname }}-${{ needs.build.outputs.built }}
 
       - name: Remove unused artifact ❌
-        uses: GeekyEggo/delete-artifact@v5
+        uses: GeekyEggo/delete-artifact@v6
         with:
           name: ${{ needs.build.outputs.zipname }}-${{ needs.build.outputs.built }}
 
       - name: Merge language and density resources 🧙🏻‍♂️
         run: |
+          $Dir = "${{ github.workspace }}\output\${{ needs.build.outputs.zipname }}"
+          # Use the newest installed SDK; the runner image drops old SDK versions over time
+          $MakePri = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\${{ inputs.arch }}\makepri.exe" | Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          if (-not $MakePri) { throw "makepri.exe not found in Windows SDK" }
+          Copy-Item -Force $MakePri.FullName $Dir
+          # arm64 makepri can't run here; Install.ps1 runs MakePri.ps1 on the user's machine
           if ("${{ inputs.arch }}" -eq "x64") {
-            (Start-Process pwsh.exe -NoNewWindow -PassThru -Args "-ExecutionPolicy Bypass -File MakePri.ps1" -WorkingDirectory "${{ github.workspace }}\output\${{ needs.build.outputs.zipname }}").WaitForExit()
-          } else {
-            Copy-Item -Force "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\arm64\makepri.exe" "${{ github.workspace }}\output\${{ needs.build.outputs.zipname }}"
+            Push-Location $Dir
+            pwsh -ExecutionPolicy Bypass -File MakePri.ps1
+            Pop-Location
           }
 
       - name: Compact Images 💿
@@ -135,7 +139,7 @@ jobs:
         run: ("hash=" + $(Get-FileHash -Path "${{ needs.build.outputs.zipname }}.7z" -Algorithm SHA256).Hash.ToLower().ToString()) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding UTF8 -Append
 
       - name: Update build to release 🤌
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ needs.build.outputs.zipname }}.7z
           fail_on_unmatched_files: true

@@ -67,7 +67,6 @@ RELEASE_TYPE_MAP=(
 
 MAGISK_BRANCH_MAP=(
     "topjohnwu"
-    "HuskyDG"
     "vvb2060"
 )
 
@@ -77,7 +76,6 @@ MAGISK_VER_MAP=(
     "canary"
     "debug"
     "release"
-    "delta"
     "alpha"
 )
 
@@ -102,6 +100,7 @@ ARGUMENT_LIST=(
     "magisk-ver:"
     "install-gapps"
     "remove-amazon"
+    "debloat"
 )
 
 default
@@ -147,6 +146,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --remove-amazon)
             REMOVE_AMAZON=1
+            shift
+            ;;
+        --debloat)
+            DEBLOAT=1
             shift
             ;;
         --)
@@ -368,6 +371,11 @@ if [ "$HAS_GAPPS" ] || [ "$ROOT_SOL" = "magisk" ]; then
         "add 000 overlay.d/sbin/post-fs-data.sh post-fs-data.sh" \
         "add 000 overlay.d/sbin/lsp_cust.img $CUST_PATH" \
         || abort "Unable to patch initrd"
+    if [ "$DEBLOAT" ]; then
+        "$WORK_DIR/magisk/magiskboot" cpio "$WORK_DIR/wsa/$ARCH/Tools/initrd.img" \
+            "add 000 overlay.d/sbin/debloat.list debloat.list" \
+            || abort "Unable to add debloat list to initrd"
+    fi
 elif [ "$ROOT_SOL" = "kernelsu" ]; then
     echo "Extracting KernelSU"
     # shellcheck disable=SC1090
@@ -425,8 +433,6 @@ else
         sed -i -e 's@Start-Process "wsa://com.topjohnwu.magisk"@@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$ROOT_SOL" = "kernelsu" ]]; then
         sed -i -e 's@wsa://com.topjohnwu.magisk@https://github.com/YT-Advanced/WSA-Script/blob/HEAD/docs/Guides/KernelSU.md@g' "../installer/$ARCH/Install.ps1"
-    elif [[ "$MAGISK_BRANCH" = "HuskyDG" ]]; then
-        sed -i -e 's@com.topjohnwu.magisk@io.github.huskydg.magisk@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$MAGISK_BRANCH" = "vvb2060" ]]; then
         sed -i -e 's@com.topjohnwu.magisk@io.github.vvb2060.magisk@g' "../installer/$ARCH/Install.ps1"
     fi

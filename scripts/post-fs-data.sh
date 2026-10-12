@@ -42,3 +42,11 @@ for file in "$MAGISKTMP"/*; do
         rm -f "$file"
     fi
 done
+# Mask debloated apps with an empty tmpfs before PackageManager scans them
+if [ -f "$MAGISKTMP/debloat.list" ]; then
+    while read -r app; do
+        for dir in /system/app /system/priv-app /product/app /product/priv-app /system_ext/app /system_ext/priv-app /vendor/app; do
+            [ -n "$app" ] && [ -d "$dir/$app" ] && mount -t tmpfs tmpfs "$dir/$app"
+        done
+    done <"$MAGISKTMP/debloat.list"
+fi

@@ -8,3 +8,4 @@
 *.erofs binary
 linker64 binary
 *.so binary
+libhoudini/bin/* binary

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ♻️
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install Dependencies 🧑‍🏭
         run: |
@@ -24,7 +24,7 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
 
       - name: Update App version 🔗
-        uses: stefanzweifel/git-auto-commit-action@v6
+        uses: stefanzweifel/git-auto-commit-action@v7
         if: env.SHOULD_BUILD == 'yes'
         with:
           branch: update
@@ -55,7 +55,7 @@ jobs:
 
       - name: Add text format to release 📝
         if: env.SHOULD_BUILD == 'yes'
-        uses: softprops/action-gh-release@v2.3.2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.date.outputs.tag }}
           body: "# Changelog\n## ${{ env.MSG }}\n### SHA256 Checksum\n```"

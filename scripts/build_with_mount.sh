@@ -161,7 +161,6 @@ RELEASE_TYPE_MAP=(
 
 MAGISK_BRANCH_MAP=(
     "topjohnwu"
-    "HuskyDG"
     "vvb2060"
 )
 
@@ -171,7 +170,6 @@ MAGISK_VER_MAP=(
     "canary"
     "debug"
     "release"
-    "delta"
     "alpha"
 )
 
@@ -195,6 +193,7 @@ ARGUMENT_LIST=(
     "compress-format:"
     "install-gapps"
     "remove-amazon"
+    "debloat"
 )
 
 default
@@ -217,6 +216,7 @@ while [[ $# -gt 0 ]]; do
         --compress-format   ) COMPRESS_FORMAT="$2"; shift 2 ;;
         --install-gapps     ) HAS_GAPPS="yes"; shift ;;
         --remove-amazon     ) REMOVE_AMAZON="yes"; shift ;;
+        --debloat           ) DEBLOAT="yes"; shift ;;
         --magisk-branch     ) MAGISK_BRANCH="$2"; shift 2 ;;
         --magisk-ver        ) MAGISK_VER="$2"; shift 2 ;;
         --                  ) shift; break;;
@@ -516,6 +516,16 @@ if [ "$REMOVE_AMAZON" ]; then
     echo -e "done\n"
 fi
 
+if [ "$DEBLOAT" ]; then
+    echo "Debloat system apps"
+    while read -r app; do
+        for dir in "$SYSTEM_MNT" "$PRODUCT_MNT" "$SYSTEM_EXT_MNT" "$VENDOR_MNT"; do
+            sudo rm -rfv "${dir:?}/app/${app:?}" "${dir:?}/priv-app/${app:?}"
+        done
+    done <debloat.list
+    echo -e "done\n"
+fi
+
 echo "Add device administration features"
 sudo sed -i -e '/cts/a \    <feature name="android.software.device_admin" />' -e '/print/i \    <feature name="android.software.managed_users" />' "$VENDOR_MNT/etc/permissions/windows.permissions.xml"
 sudo setfattr -n security.selinux -v "u:object_r:vendor_configs_file:s0" "$VENDOR_MNT/etc/permissions/windows.permissions.xml" || abort
@@ -723,8 +733,6 @@ else
         sed -i -e 's@Start-Process "wsa://com.topjohnwu.magisk"@@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$ROOT_SOL" = "kernelsu" ]]; then
         sed -i -e 's@wsa://com.topjohnwu.magisk@https://github.com/YT-Advanced/WSA-Script/blob/HEAD/docs/Guides/KernelSU.md@g' "../installer/$ARCH/Install.ps1"
-    elif [[ "$MAGISK_BRANCH" = "HuskyDG" ]]; then
-        sed -i -e 's@com.topjohnwu.magisk@io.github.huskydg.magisk@g' "../installer/$ARCH/Install.ps1"
     elif [[ "$MAGISK_BRANCH" = "vvb2060" ]]; then
         sed -i -e 's@com.topjohnwu.magisk@io.github.vvb2060.magisk@g' "../installer/$ARCH/Install.ps1"
     fi

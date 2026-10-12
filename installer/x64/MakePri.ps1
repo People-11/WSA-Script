@@ -16,16 +16,17 @@
 # Copyright (C) 2023 LSPosed Contributors
 #
 
-$MakePri = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makepri.exe"
+$MakePri = Join-Path $PSScriptRoot "makepri.exe"
 
 New-Item -Path "." -Name "priinfo" -ItemType "directory" | Out-Null
 Copy-Item .\resources.pri -Destination ".\pri\resources.pri" | Out-Null
 $AppxManifestFile = ".\AppxManifest.xml"
 $PriItem = Get-Item ".\pri\*" -Include "*.pri"
 Write-Output "Dumping resources..."
-foreach ($Item in $PriItem) {
-    Start-Process -PassThru $MakePri -Args "dump /if $($Item | Resolve-Path -Relative) /o /es .\pri\resources.pri /of .\priinfo\$($Item.Name).xml /dt detailed"
+$Processes = foreach ($Item in $PriItem) {
+    Start-Process -PassThru -NoNewWindow $MakePri -Args "dump /if $($Item | Resolve-Path -Relative) /o /es .\pri\resources.pri /of .\priinfo\$($Item.Name).xml /dt detailed"
 }
+$Processes | Wait-Process
 
 Write-Output "Creating pri from dumps...."
 $ProcNewFromDump = Start-Process -PassThru $MakePri -Args "new /pr .\priinfo /cf .\xml\priconfig.xml /of .\resources.pri /mn $AppxManifestFile /o"
@@ -48,6 +49,7 @@ $ProjectXml.Save($AppxManifestFile)
 
 Remove-Item 'pri' -Recurse -Force
 Remove-Item 'xml' -Recurse -Force
+Remove-Item 'makepri.exe' -Force
 Remove-Item 'filelist-pri.txt' -Force
 Remove-Item $PSCommandPath -Force
 exit 0
